@@ -4,20 +4,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
+import itertools
+import lattice
 
 
-def rotate_polygon(polygon, angle, x, y):
-	""" Rotates a 2D polygon around (x,y)
-
+def search_nied_peart(polygon, max_dispersion):
+	""" Searches for the largest polygon in a unit square using
+		Niederreiter & Peart's method (1986)
+	
 	"""
-	polygon = polygon - np.array([x,y])
-	transform = np.array([[np.cos(angle), -np.sin(angle)],
-						  [np.sin(angle), np.cos(angle)]])
-	return np.dot(polygon, transform) + np.array([x,y])
+	
+	#define evaluation points
+	x = get_lattice_points(3, max_dispersion)
+	for i in x:
+		print(i)
+	
 
-
-def search_polygon(polygon, nb_iterations):
-	""" Searches for the largest polygon in a unit square
+def search_montecarlo(polygon, nb_iterations):
+	""" Searches for the largest polygon in a unit square using the montecarlo method
 
 	"""
 
@@ -42,7 +46,7 @@ def search_polygon(polygon, nb_iterations):
 		#calculate score using objective function
 		score = get_score(x, y, angle, scale)
 		errors[0,i-1] = i
-		errors[1,i-1] = 0.5528 - max_score #0.7071 - max_score
+		errors[1,i-1] = 0.7071 - max_score #0.5528 - max_score
 
 		#make checks and adjust max if necessary
 		if score > max_score and (verts < 1).all() and (verts > 0).all():
@@ -50,6 +54,7 @@ def search_polygon(polygon, nb_iterations):
 				max_score = score
 
 	return max_polygon, errors
+
 
 def get_possible_scale(polygon, x, y, angle):
 	""" Calculates the maximum possible scale given x, y and angle
@@ -72,7 +77,6 @@ def get_possible_scale(polygon, x, y, angle):
 			s[1] = (1-y)/s[1]
 	
 	return np.min(scales)
-	
 
 
 def get_score(x, y, angle, scale):
@@ -81,6 +85,28 @@ def get_score(x, y, angle, scale):
 	"""
 	
 	return scale
+
+
+def define_polygon(number_sides):
+	""" Returns an array with the coordinates of a regular polygon with radius 1
+
+	"""
+	assert number_sides >= 3
+	
+	angle = 2*np.pi/number_sides
+	result = np.array( [(np.cos(n*angle), np.sin(n*angle)) for n in range(0, number_sides + 1)] )
+
+	return result
+
+
+def rotate_polygon(polygon, angle, x, y):
+	""" Rotates a 2D polygon around (x,y)
+
+	"""
+	polygon = polygon - np.array([x,y])
+	transform = np.array([[np.cos(angle), -np.sin(angle)],
+						  [np.sin(angle), np.cos(angle)]])
+	return np.dot(polygon, transform) + np.array([x,y])
 
 
 def plot_polygon(verts, errors):
@@ -110,22 +136,13 @@ def plot_polygon(verts, errors):
 	plt.show()
 
 
-def define_polygon(number_sides):
-	""" Returns an array with the coordinates of a regular polygon with radius 1
-
-	"""
-	assert number_sides >= 3
-	
-	angle = 2*np.pi/number_sides
-	result = np.array( [(np.cos(n*angle), np.sin(n*angle)) for n in range(0, number_sides + 1)] )
-
-	return result
-
-
 def main():
-	square = define_polygon(5)
-	[max_square, errors] = search_polygon(square, 1000000)
+	square = define_polygon(4)
+	[max_square, errors] = search_montecarlo(square, 100000)
 	plot_polygon(max_square, errors)
+	
+	#search_nied_peart(square, 10**(-2))
+	
 
 if __name__ == '__main__':
 	main()
