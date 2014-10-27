@@ -2,45 +2,25 @@
 
 import numpy as np
 
-import lattice
 import polygon
-import montecarlo
-
-
-def search_nied_peart(polygon, num_points):
-	""" Searches for the largest polygon in a unit square using
-		Niederreiter & Peart's method (1986)
-	
-	"""
-	
-	# define evaluation points
-	x = lattice.get_lattice_points(4, num_points)
-	# x[2,:] = x[2,:]*2*np.pi
-		
-	epsilon = 0.5
-	cube_centre = [0.5, 0.5, 0.5, 0.5]
-	cube_edge = 0.5
-	
-	a = np.array([cube_centre, ] * num_points).T
-	e = np.ones((4, num_points))
-	
-	g = a + epsilon * (2 * x - e)
-	
-	polygon.evaluate_points(g)
-	
-	print g
-
+import montecarlo, qmc
 
 def main():
-	square = polygon.get_regular_polygon(3)
-	max_it = 10000
-	[config, scores] = montecarlo.search_montecarlo(square, max_it)
-	poly = polygon.get_polygon_from_config(square, config)
-	var = [np.var(scores[0:i]) for i in scores]
+	# base = polygon.get_regular_polygon(4)
+	base = polygon.get_sharp_triangle(np.pi/18)
+	
+	max_it = 100000
+	[config, scores] = montecarlo.search_montecarlo(base, max_it)
+	poly = polygon.get_polygon_from_config(base, config)
+	
+	var = np.zeros((1,max_it))
+	for i in np.arange(0,max_it):
+		var[0,i] = np.var(scores[0,0:i])
+		
 	conv = np.vstack((np.arange(0,max_it).reshape(1,max_it),var))
 	polygon.plot_polygon(poly, conv)
 	
-	# search_nied_peart(square, 10**(-2))
+	#qmc.search_nied_peart(square, 10**3)
 	
 
 if __name__ == '__main__':

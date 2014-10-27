@@ -4,8 +4,25 @@ from matplotlib.path import Path
 import matplotlib.patches as patches
 
 
+def get_sharp_triangle(angle):
+	""" Returns the vertices of a triangle with a sharp angle and radius 1.
+		angle must be between 0 and pi/2.
+	"""
+	assert angle > 0 and angle < np.pi/2
+	
+	# Initialize result
+	result = np.zeros((3,2))
+	
+	# vertices are (0,1); (sin(a), -cos(a)); (-sin(a), -cos(a)) 
+	result[0] = (0,1)
+	result[1] = (np.sin(angle), -np.cos(angle))
+	result[2] = (-np.sin(angle), -np.cos(angle))
+	
+	return result
+
+
 def get_regular_polygon(number_sides):
-	""" Returns the vertices of a regular polygon of radius 1
+	""" Returns the vertices of a regular polygon of radius 1.
 
 	"""
 	# Number of sides must be at least 3
@@ -15,7 +32,7 @@ def get_regular_polygon(number_sides):
 	angle = 2 * np.pi / number_sides
 	
 	# Create array of vertices
-	return np.array([(np.cos(n * angle), np.sin(n * angle)) for n in range(0, number_sides + 1)])
+	return np.array([(np.cos(n * angle), np.sin(n * angle)) for n in range(0, number_sides)])
 
 
 def rotate_polygon(polygon, angle, x, y):
@@ -96,13 +113,16 @@ def evaluate_points(base_poly, configs):
 			# Add to other results
 			result = np.hstack((result, res))
 		
-		return result[:, 1:]
+	return result[:, 1:]
 	
 
 def plot_polygon(verts, errors):
 	""" Plots a polygon with center (x,y)
 	
 	"""
+	# Add first vertex at the end again
+	verts = np.vstack((verts, verts[0,:]))
+	
 	
 	# Configure polygon
 	codes = [Path.LINETO] * (verts.shape[0] - 1)
