@@ -51,13 +51,13 @@ def rotate_polygon(polygon, angle, x, y):
 	return np.dot(polygon, transform) + np.array([x, y])
 	
 	
-def get_possible_scale(polygon, x, y, angle):
+def get_possible_scale(base_polygon, x, y, angle):
 	""" Calculates the maximum possible scale given x, y and angle.
 		Leaves 1% margin.
 	
 	"""
 	#Calculate vertices of the base polygon
-	verts = rotate_polygon(polygon, angle, 0, 0)
+	verts = rotate_polygon(base_polygon, angle, 0, 0)
 	assert (verts != 0).all()
 	
 	scales = verts
@@ -85,18 +85,19 @@ def get_polygon_from_config(base_polygon, config):
 	assert len(config) == 4
 	
 	# transform the base polygon according to configuration
-	return config[3, 0] * rotate_polygon(base_polygon, config[2, 0], 0, 0) + np.array([config[0, 0], config[1, 0]])
+	return config[3] * rotate_polygon(base_polygon, config[2], 0, 0) + np.array([config[0], config[1]])
 
 	
 def evaluate_points(base_poly, configs):
 	""" Evaluates the objective function for the given points.
-		Returns a matrix containing all valid configurations and their evaluation.
+		Returns a row containing all configuration scores.
+		The score for an invalid config is 0.
 	"""
 	# configs must have 4 rows: x, y, angle, scale
 	assert np.shape(configs)[0] == 4
 	
-	# Initialize results as empty matrix
-	result = np.zeros((5, 1))
+	# Initialize results as empty row
+	result = np.zeros(np.shape(configs)[1])
 	
 	# Iterate over each configuration
 	for i in range(0, np.shape(configs)[1]):
@@ -107,13 +108,13 @@ def evaluate_points(base_poly, configs):
 			
 		# If configuration is valid, calculate size squared and add it to results
 		if (verts <= 1).all() and (verts >= 0).all():
-			# Add result under current config
-			res = np.vstack((config, np.matrix([config[3, 0] ** 2])))
-			
-			# Add to other results
-			result = np.hstack((result, res))
+			# Add scale**2 to result
+			result[i] = config[3] ** 2
+		else:
+			# Add result for invalid config
+			result[i] = 0
 		
-	return result[:, 1:]
+	return result
 	
 
 def plot_polygon(verts, errors):

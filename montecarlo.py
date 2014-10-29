@@ -1,7 +1,7 @@
 import numpy as np
 import polygon
 
-def search_montecarlo(base_polygon, max_it):
+def search_montecarlo(base_polygon, max_N):
 	""" Searches for the largest polygon in a unit square using the montecarlo method
 
 	"""
@@ -9,31 +9,33 @@ def search_montecarlo(base_polygon, max_it):
 	np.random.seed(48951)
 
 	# Initialize config
-	best_config = np.zeros((4, 1))
-	best_scores = np.zeros((1, max_it))
-	best_score = 0
-
+	best_config = np.zeros((4, np.log2(max_N)+1))
+	best_scores = np.zeros(np.log2(max_N)+1)
+	
+	N = 1
 	# iterates for set number of loops
-	for i in range(0, max_it):
+	while N <= max_N:
 
 		# find a random configuration
-		x = np.random.uniform(0, 1)
-		y = np.random.uniform(0, 1)
-		angle = np.random.uniform(0, 2 * np.pi)
+		x = np.random.uniform(0, 1, N)
+		y = np.random.uniform(0, 1, N)
+		angle = np.random.uniform(0, 2 * np.pi, N)
 		# scale = np.random.uniform(0, get_possible_scale(base_polygon, x, y, angle))
-		scale = polygon.get_possible_scale(base_polygon, x, y, angle)
-
-		# set configuration
-		config = np.matrix([x, y, angle, scale]).T
 		
-		# calculate score using objective function
-		score = polygon.evaluate_points(base_polygon, config)
+		# for every combo of x, y, angle: calculate max scale
+		scale = [polygon.get_possible_scale(base_polygon, x[i], y[i], angle[i]) for i in range(0,N)]
 
-		# adjust max if necessary
-		if score[4, 0] > best_score:
-			best_config = config
-			best_score = score[4, 0]
+		# set configurations
+		configs = np.array([x, y, angle, scale])
 		
-		best_scores[0, i] = best_score
+		# calculate scores using objective function
+		scores = polygon.evaluate_points(base_polygon, configs)
+		
+		argmax = np.argmax(scores)
+
+		best_config[:, np.log2(N)] = configs[:, argmax]
+		best_scores[np.log2(N)] = scores[argmax]
+		
+		N = 2*N
 
 	return best_config, best_scores
