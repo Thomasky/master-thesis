@@ -6,7 +6,7 @@ import polygon as p
 class Test(unittest.TestCase):
 
     def test_get_sharp_traingle(self):
-        tri = p.get_sharp_triangle(np.pi / 3)
+        tri = p.create_sharp_triangle(np.pi / 3)
         self.assertEquals(tri[0, 0], 0)
 
     def test_includes_point(self):
@@ -16,5 +16,5 @@ class Test(unittest.TestCase):
 
     def test_includes_polygon(self):
         search_polygon = p.get_regular_polygon(4)
-        polygon = p.get_sharp_triangle(np.pi / 10)
+        polygon = p.create_sharp_triangle(np.pi / 10)
         self.assertFalse(p.includes_polygon(search_polygon, polygon))

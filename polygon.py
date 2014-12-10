@@ -5,51 +5,84 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def get_sharp_triangle(angle):
+def create_sharp_triangle(angle):
     """ Returns the vertices of a triangle with a sharp angle and radius 1.
             angle must be between 0 and pi/2.
     """
     assert angle > 0 and angle < np.pi / 2
 
     # Initialize result
-    result = np.zeros((3, 2))
+    centre = np.array([0, 0])
+    radius = 1
+    vertices = np.zeros((3, 2))
 
-    # vertices are (0,1); (sin(a), -cos(a)); (-sin(a), -cos(a))
-    result[0] = (0, 1)
-    result[1] = (-np.sin(angle), -np.cos(angle))
-    result[2] = (np.sin(angle), -np.cos(angle))
+    # vertex consists of radius and angle
+    vertices[0] = (radius, 0)
+    vertices[1] = (radius, np.pi - angle)
+    vertices[2] = (radius, np.pi + angle)
 
-    return result
+    return centre, vertices
 
 
-def get_regular_polygon(number_sides):
-    """ Returns the vertices of a regular polygon of radius 1.
-            The first vertex is (0,1) and the subsequent vertices are generated in counterclockwise direction
+def create_regular_polygon(number_sides):
+    """ Returns the centre and vertices of a regular polygon of radius 1.
+        The first vertex is (r=1, theta=0) and the subsequent vertices are generated in 
+        counterclockwise direction.
     """
     # Number of sides must be at least 3
     assert number_sides >= 3
 
+    # Initialize result
+    centre = np.array([0, 0])
+    radius = 1
+
     # Calculate angle between vertices
     angle = 2 * np.pi / number_sides
 
-    # Create array of vertices
-    return np.array([(-np.sin(n * angle), np.cos(n * angle)) for n in range(0, number_sides)])
+    # create vertices
+    vertices = np.array([[radius, n * angle] for n in range(0, number_sides)])
+
+    # return centre and vertices
+    return centre, vertices
 
 
-def rotate_polygon(polygon, angle, x, y):
-    """ Rotates a 2D polygon around (x,y)
+def translate(polygon, point):
+    """ Translates a 2D polygon by a vector 'point'
 
     """
 
-    # Translate to origin
-    polygon = polygon - np.array([x, y])
+    # return new centre and same vertices
+    return polygon[0] + point, polygon[1]
 
-    # Create rotation matrix
-    transform = np.array([[np.cos(angle), -np.sin(angle)],
-                          [np.sin(angle), np.cos(angle)]])
+
+def rotate(polygon, angle):
+    """ Rotates a 2D polygon around its own centre
+
+    """
+
+    nb_vertices = np.shape(polygon[1])[0]
+
+    # vertices only need to add the rotation angle to their angles
+    temp = np.hstack((np.zeros((nb_vertices, 1)), np.ones((nb_vertices, 1))))
+    vertices = polygon[1] + angle * temp
 
     # Rotate and Translate back to (x,y)
-    return np.dot(polygon, transform) + np.array([x, y])
+    return polygon[0], vertices
+
+
+def scale(polygon, scale):
+    """ Scales a 2D polygon around its own centre
+
+    """
+
+    nb_vertices = np.shape(polygon[1])[0]
+
+    # vertices only need to multiply their radii with scale
+    temp = np.ones((nb_vertices, 1)) * np.array([scale, 1]).reshape((1, 2))
+    vertices = np.multiply(polygon[1], temp)
+
+    # Rotate and Translate back to (x,y)
+    return polygon[0], vertices
 
 
 def get_possible_scale(search_polygon, base_polygon, x, y, angle):
@@ -58,7 +91,7 @@ def get_possible_scale(search_polygon, base_polygon, x, y, angle):
 
     """
     # Calculate vertices of the base polygon
-    verts = rotate_polygon(base_polygon, angle, 0, 0)
+    verts = rotate(base_polygon, angle)
     assert (verts != 0).all()
 
     scales = verts
@@ -85,8 +118,8 @@ def get_polygon_from_config(base_polygon, config):
     # config must be an array of size 4
     assert len(config) == 4
 
-    # transform the base polygon according to configuration
-    return config[3] * rotate_polygon(base_polygon, config[2], 0, 0) + np.array([config[0], config[1]])
+    # first rotate, then scale vertices, then translate
+    return translate(scale(rotate(base_polygon, config[2]), config[3]), config[0:2])
 
 
 def evaluate_points(search_polygon, base_poly, configs):
@@ -132,44 +165,68 @@ def includes_polygon(search_polygon, polygon):
     return True
 
 
+# def includes_point(polygon, point):
+#     """	Checks if a 2D polygon contains a point.
+#             Based on algorithm in [O'Rourke (1998) - Computational Geometry in C, p. 244]
+#             The polygon must be convex (!)
+#     """
+# r_cross = 0  # number of right edge crossings
+# l_cross = 0  # number of left edge crossings
+# r_strad = 0  # boolean false
+# l_strad = 0  # blooean false
+#
+#     n = np.size(polygon, axis=0)
+#
+# Loop over all edges
+#     for i in range(0, n):
+# check if point is a vertex
+#         if (polygon[i, :] == point).all():
+#             return True
+#         i1 = (i + n - 1) % n
+#
+# check if edge straddles horizontal ray
+#         r_strad = (polygon[i, 1] > point[1]) != (polygon[i1, 1] > point[1])
+#         l_strad = (polygon[i, 1] < point[1]) != (polygon[i1, 1] < point[1])
+#
+#         if r_strad or l_strad:
+# Intersection of edge and ray
+#             x = polygon[i1, 0] + (point[1] - polygon[i1, 1]) * (
+#                 polygon[i, 0] - polygon[i1, 0]) / (polygon[i, 1] - polygon[i1, 1])
+#
+#         if r_strad and x > point[0]:
+#             r_cross = r_cross + 1
+#         if l_strad and x < point[0]:
+#             l_cross = l_cross + 1
+#
+#     if (r_cross & 1) != (l_cross & 1):
+# Point is on the edge
+#         return True
+#
+#     return r_cross & 1
+
+
 def includes_point(polygon, point):
-    """	Checks if a 2D polygon contains a point.
-            Based on algorithm in [O'Rourke (1998) - Computational Geometry in C, p. 244]
-            The polygon must be convex (!)
+    """ Checks if polygon includes point in log(n) time
+
     """
-    r_cross = 0  # number of right edge crossings
-    l_cross = 0  # number of left edge crossings
-    r_strad = 0  # boolean false
-    l_strad = 0  # blooean false
+    centre = polygon[0]
 
-    n = np.size(polygon, axis=0)
+    # Get angle between centre of polygon and point
+    angle = np.arctan((centre[1] - point[1]) / (centre[0] - point[0]))
 
-    # Loop over all edges
-    for i in range(0, n):
-        # check if point is a vertex
-        if (polygon[i, :] == point).all():
-            return True
-        i1 = (i + n - 1) % n
+    # Perform a binary search on the angles to find the important edge
+    vertices = binary_angle_search(angle, polygon[1])
 
-        # check if edge straddles horizontal ray
-        r_strad = (polygon[i, 1] > point[1]) != (polygon[i1, 1] > point[1])
-        l_strad = (polygon[i, 1] < point[1]) != (polygon[i1, 1] < point[1])
+    # Determine if point lies further away from centre than edge in question
 
-        if r_strad or l_strad:
-            # Intersection of edge and ray
-            x = polygon[i1, 0] + (point[1] - polygon[i1, 1]) * (
-                polygon[i, 0] - polygon[i1, 0]) / (polygon[i, 1] - polygon[i1, 1])
+    return angle
 
-        if r_strad and x > point[0]:
-            r_cross = r_cross + 1
-        if l_strad and x < point[0]:
-            l_cross = l_cross + 1
 
-    if (r_cross & 1) != (l_cross & 1):
-        # Point is on the edge
-        return True
+def binary_angle_search(angle, vertices):
+    """ Performs a binary search on an array of angles and returns the radii
+        and angles of the two encapsulating vertices.
 
-    return r_cross & 1
+    """
 
 
 def plot_polygon(verts, scores):
@@ -202,8 +259,8 @@ def plot_polygon(verts, scores):
     plt.ylim(0, 1)
     plt.gca().set_aspect('equal', adjustable='box')
 
-    plt.subplot(212)
-    plt.loglog(conv[0], conv[1])
-    plt.title('Convergence')
+#     plt.subplot(212)
+#     plt.loglog(conv[0], conv[1])
+#     plt.title('Convergence')
 
     plt.show()
