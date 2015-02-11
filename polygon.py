@@ -1,7 +1,3 @@
-from matplotlib.path import Path
-
-import matplotlib.patches as patches
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -52,29 +48,37 @@ def rotate_polygon(polygon, angle, x, y):
     return np.dot(polygon, transform) + np.array([x, y])
 
 
-def get_possible_scale(search_polygon, base_polygon, x, y, angle):
+def get_possible_scale(search_polygon, inclusions, base_polygon, x, y, angle):
     """ Calculates the maximum possible scale given x, y and angle.
             Leaves .01% margin.
 
     """
+    s = 1000
+
     # Calculate vertices of the base polygon
-    verts = rotate_polygon(base_polygon, angle, 0, 0)
-    assert (verts != 0).all()
+    base_verts = rotate_polygon(base_polygon, angle, 0, 0)
+    base_verts = np.vstack((base_verts, base_verts[0, :]))
 
-    scales = verts
-    # for every vertex
-    for s in scales:
-        if s[0] < 0:
-            s[0] = -x / s[0]
-        else:
-            s[0] = (1 - x) / s[0]
+    # edges = search_verts - np.roll(base_verts, 1, 0)
+    # For all edges of base ploygon:
+    for i in range(np.shape(base_polygon)[0]):
+        edge = base_verts[i] - base_verts[i + 1]
+        norm = np.sqrt(np.dot(edge.T, edge))
+        edge = edge / norm
 
-        if s[1] < 0:
-            s[1] = -y / s[1]
-        else:
-            s[1] = (1 - y) / s[1]
+        # Get distance from (x,y) to edge -> d
+        d = np.cross(edge, np.array([x, y]) - base_verts[i])
 
-    return np.min(scales) * 0.9999
+        # Calculate max scale to every search polygon point and inclusion point
+        for incl in np.vstack((search_polygon, inclusions)):
+            l = np.cross(edge, incl - base_verts[i])
+
+            # Check that (x,y) and point are on opposite sides of edge or |d| >
+            # |l|
+            if (not np.sign(d) == np.sign(l)) or (np.abs(d) <= np.abs(l)):
+                s = np.min([s, np.abs((d - l) / d)])
+
+    return s
 
 
 def get_polygon_from_config(base_polygon, config):
@@ -170,40 +174,3 @@ def includes_point(polygon, point):
         return True
 
     return r_cross & 1
-
-
-def plot_polygon(verts, scores):
-    """ Plots a polygon with center (x,y)
-
-    """
-    # Add first vertex at the end again
-    verts = np.vstack((verts, verts[0, :]))
-
-    # Configure polygon
-    codes = [Path.LINETO] * (verts.shape[0] - 1)
-    codes[0] = Path.MOVETO
-    codes.append(Path.CLOSEPOLY)
-
-    path = Path(verts, codes)
-
-    var = np.zeros(np.size(scores, axis=1))
-    for i in range(0, np.size(scores, axis=1)):
-        var[i] = np.var(scores[:, i])
-
-    x1 = [2 ** i for i in range(0, np.size(scores, axis=1))]
-    conv = np.vstack((x1, var))
-
-    # fig = plt.figure()
-    ax = plt.subplot(211)
-    patch = patches.PathPatch(path, facecolor='orange', lw=2)
-    ax.add_patch(patch)
-    plt.title('Score: ' + scores[-1, -1].astype('str'))
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.gca().set_aspect('equal', adjustable='box')
-
-    plt.subplot(212)
-    plt.loglog(conv[0], conv[1])
-    plt.title('Convergence')
-
-    plt.show()

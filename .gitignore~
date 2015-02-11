@@ -1,4 +1,4 @@
 *.pyc
 __pycache__/.ipynb_checkpoints/Monte Carlo Search Square-checkpoint.ipynb
 /.ipynb_checkpoints/Monte Carlo Search Square-checkpoint.ipynb
-CGAL/
+/CGAL

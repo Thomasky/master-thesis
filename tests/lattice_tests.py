@@ -13,5 +13,23 @@ class Test(unittest.TestCase):
 
         plt.figure()
         plt.plot(lattice_points[0, :], lattice_points[1, :], 'b.')
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.gca().set_aspect('equal', adjustable='box')
         plt.show()
         self.assertEqual(lattice_points[0, 0], 0)
+
+    def test_montecarlo(self):
+        np.random.seed(123458)
+
+        num_points = 100
+        samplesx = np.random.uniform(0, 1, num_points)
+        samplesy = np.random.uniform(0, 1, num_points)
+
+        plt.figure()
+        plt.plot(samplesx, samplesy, 'b.')
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.show()
+        self.assertEqual(samplesx[0, 0], 0)
